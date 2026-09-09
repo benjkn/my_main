@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projects</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font: 15px/1.4 system-ui, sans-serif;
+      max-width: 40rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    h1 { font-size: 1.1rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+    th { font-weight: 500; color: color-mix(in srgb, currentColor 55%, transparent); font-size: 0.8rem; }
+    .light {
+      display: inline-block;
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      background: #999;
+      vertical-align: middle;
+    }
+    .green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .yellow { background: #eab308; box-shadow: 0 0 6px #eab308; }
+    .red { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    a { color: inherit; }
+    .ip-mark { color: #ef4444; font-size: 0.75em; }
+    .code { margin-left: 0.4rem; font-variant-numeric: tabular-nums; color: color-mix(in srgb, currentColor 55%, transparent); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Projects</h1>
+  <table>
+    <thead>
+      <tr><th>Project</th><th>Health</th><th></th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    const projects = [
+      { name: "Lotbook", url: "http://100.101.148.4:8000/" },
+      { name: "tele_bot", url: "http://100.101.148.4:8080" },
+      { name: "games_101", url: "https://www.playfree.party/" },
+      { name: "personal_tracking", url: "https://100.101.148.4:3000/" },
+    ];
+
+    function usesIp(url) {
+      try {
+        return /^\d{1,3}(\.\d{1,3}){3}$/.test(new URL(url).hostname);
+      } catch {
+        return false;
+      }
+    }
+
+    function healthUrl(url) {
+      const u = new URL(url);
+      u.pathname = usesIp(url) ? "/health" : "/api/health";
+      u.search = "";
+      u.hash = "";
+      return u.href;
+    }
+
+    function bodyHealthy(body) {
+      console.log(body);
+      return body?.ok === true;
+    }
+
+    async function ping(url) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      try {
+        const res = await fetch(url + "?_=" + Date.now(), { signal: ctrl.signal });
+        let body = null;
+        try { body = await res.json(); } catch {}
+        const healthy = bodyHealthy(body) ?? res.ok;
+        const color = healthy ? "green" : res.status >= 500 ? "red" : "yellow";
+        return { color, code: res.status };
+      } catch (err) {
+        const code = err.name === "AbortError" ? "timeout" : "failed";
+        return { color: "red", code };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    const rows = document.getElementById("rows");
+    rows.innerHTML = projects.map((p, i) => {
+      const star = usesIp(p.url) ? `<span class="ip-mark">*</span>` : "";
+      const link = p.url
+        ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>${star}`
+        : "";
+      const health = healthUrl(p.url);
+      return `
+        <tr>
+          <td>${p.name}</td>
+          <td><span class="light yellow" id="h${i}"></span><a class="code" id="c${i}" href="${health}" target="_blank" rel="noopener"></a></td>
+          <td>${link}</td>
+        </tr>
+      `;
+    }).join("");
+
+    async function refresh() {
+      await Promise.all(projects.map(async (p, i) => {
+        const { color, code } = await ping(healthUrl(p.url));
+        document.getElementById("h" + i).className = "light " + color;
+        document.getElementById("c" + i).textContent = code;
+      }));
+    }
+
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
+</body>
+</html>
