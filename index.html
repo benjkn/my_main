@@ -92,10 +92,10 @@
         try { body = await res.json(); } catch {}
         const healthy = bodyHealthy(body) ?? res.ok;
         const color = healthy ? "green" : res.status >= 500 ? "red" : "yellow";
-        return { color, code: res.status };
+        return { color, code: res.status, body };
       } catch (err) {
         const code = err.name === "AbortError" ? "timeout" : "failed";
-        return { color: "red", code };
+        return { color: "red", code, body: null };
       } finally {
         clearTimeout(timer);
       }
@@ -133,10 +133,11 @@
         const health = p.url ? healthUrl(p.url) : "";
         const light = p.color || "yellow";
         const code = p.code ?? "";
+        const tip = p.meta ? Object.entries(p.meta).map(([k, v]) => `${k}: ${v}`).join(" · ") : "";
         return `
           <tr>
             <td>${p.name}</td>
-            <td>${health ? `<span class="light ${light}"></span><a class="code" href="${health}" target="_blank" rel="noopener">${code}</a>` : ""}</td>
+            <td>${health ? `<span class="light ${light}"></span><a class="code" href="${health}" target="_blank" rel="noopener" title="${tip}">${code}</a>` : ""}</td>
             <td>${link}</td>
           </tr>
         `;
@@ -146,9 +147,10 @@
     async function refresh() {
       await Promise.all(projects.map(async p => {
         if (!p.url) return;
-        const { color, code } = await ping(healthUrl(p.url));
+        const { color, code, body } = await ping(healthUrl(p.url));
         p.color = color;
         p.code = code;
+        p.meta = body;
       }));
       sortProjects();
       render();
