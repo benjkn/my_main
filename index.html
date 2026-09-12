@@ -13,6 +13,17 @@
       padding: 0 1rem;
     }
     h1 { font-size: 1.1rem; font-weight: 600; }
+    header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    button, .linkish {
+      font: inherit;
+      font-size: 0.8rem;
+      background: none;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      text-decoration: underline;
+      cursor: pointer;
+    }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
     th { font-weight: 500; color: color-mix(in srgb, currentColor 55%, transparent); font-size: 0.8rem; }
@@ -33,7 +44,11 @@
   </style>
 </head>
 <body>
-  <h1>Projects</h1>
+  <header>
+    <h1>Projects</h1>
+    <button type="button" id="pick">Choose Projects folder</button>
+  </header>
+  <input type="file" id="folder" webkitdirectory hidden>
   <table>
     <thead>
       <tr><th>Project</th><th>Health</th><th></th></tr>
@@ -41,13 +56,12 @@
     <tbody id="rows"></tbody>
   </table>
   <script>
-    // TODO: fetch projects from folder `projects`
-    const projects = [
-      { name: "Lotbook", url: "http://100.101.148.4:8000/" },
-      { name: "tele_bot", url: "http://100.101.148.4:8080" },
-      { name: "games_101", url: "https://www.playfree.party/" },
-      { name: "personal_tracking", url: "https://100.101.148.4:3000/" },
-    ];
+    const URLS = {
+      sec_tax_tracking: "http://100.101.148.4:8000/",
+      "telegram-bot": "http://100.101.148.4:8080",
+      games_101: "https://www.playfree.party/",
+      personal_tracking: "https://100.101.148.4:3000/",
+    };
 
     function usesIp(url) {
       try {
@@ -66,7 +80,6 @@
     }
 
     function bodyHealthy(body) {
-      console.log(body);
       return body?.ok === true;
     }
 
@@ -88,31 +101,131 @@
       }
     }
 
+    let projects = [];
     const rows = document.getElementById("rows");
-    rows.innerHTML = projects.map((p, i) => {
-      const star = usesIp(p.url) ? `<span class="ip-mark">*</span>` : "";
-      const link = p.url
-        ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>${star}`
-        : "";
-      const health = healthUrl(p.url);
-      return `
-        <tr>
-          <td>${p.name}</td>
-          <td><span class="light yellow" id="h${i}"></span><a class="code" id="c${i}" href="${health}" target="_blank" rel="noopener"></a></td>
-          <td>${link}</td>
-        </tr>
-      `;
-    }).join("");
 
-    async function refresh() {
-      await Promise.all(projects.map(async (p, i) => {
-        const { color, code } = await ping(healthUrl(p.url));
-        document.getElementById("h" + i).className = "light " + color;
-        document.getElementById("c" + i).textContent = code;
-      }));
+    const RANK = { green: 0, yellow: 1, red: 2 };
+
+    function setProjects(names) {
+      projects = [...names]
+        .filter(name => !name.startsWith("."))
+        .sort((a, b) => a.localeCompare(b))
+        .map(name => ({ name, url: URLS[name] }));
+      render();
+      refresh();
     }
 
-    refresh();
+    function sortProjects() {
+      projects.sort((a, b) => {
+        const ra = a.color == null ? 3 : RANK[a.color];
+        const rb = b.color == null ? 3 : RANK[b.color];
+        if (ra !== rb) return ra - rb;
+        return a.name.localeCompare(b.name);
+      });
+    }
+
+    function render() {
+      rows.innerHTML = projects.map(p => {
+        const star = p.url && usesIp(p.url) ? `<span class="ip-mark">*</span>` : "";
+        const link = p.url
+          ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>${star}`
+          : "";
+        const health = p.url ? healthUrl(p.url) : "";
+        const light = p.color || "yellow";
+        const code = p.code ?? "";
+        return `
+          <tr>
+            <td>${p.name}</td>
+            <td>${health ? `<span class="light ${light}"></span><a class="code" href="${health}" target="_blank" rel="noopener">${code}</a>` : ""}</td>
+            <td>${link}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function refresh() {
+      await Promise.all(projects.map(async p => {
+        if (!p.url) return;
+        const { color, code } = await ping(healthUrl(p.url));
+        p.color = color;
+        p.code = code;
+      }));
+      sortProjects();
+      render();
+    }
+
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open("projects-board", 1);
+        req.onupgradeneeded = () => req.result.createObjectStore("handles");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveHandle(handle) {
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction("handles", "readwrite");
+        tx.objectStore("handles").put(handle, "projects");
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadHandle() {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("handles", "readonly");
+        const req = tx.objectStore("handles").get("projects");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function namesFromDir(dir) {
+      const names = [];
+      for await (const [name, handle] of dir.entries()) {
+        if (handle.kind === "directory") names.push(name);
+      }
+      return names;
+    }
+
+    async function useDir(dir) {
+      const perm = await dir.queryPermission({ mode: "read" });
+      if (perm !== "granted") {
+        if (await dir.requestPermission({ mode: "read" }) !== "granted") return false;
+      }
+      setProjects(await namesFromDir(dir));
+      return true;
+    }
+
+    document.getElementById("pick").onclick = async () => {
+      if (window.showDirectoryPicker) {
+        const dir = await showDirectoryPicker();
+        await saveHandle(dir);
+        await useDir(dir);
+        return;
+      }
+      document.getElementById("folder").click();
+    };
+
+    document.getElementById("folder").onchange = e => {
+      const names = new Set();
+      for (const file of e.target.files) {
+        const top = file.webkitRelativePath.split("/")[0];
+        if (top) names.add(top);
+      }
+      setProjects(names);
+    };
+
+    (async () => {
+      try {
+        const dir = await loadHandle();
+        if (dir) await useDir(dir);
+      } catch {}
+    })();
+
     setInterval(refresh, 15000);
   </script>
 </body>
