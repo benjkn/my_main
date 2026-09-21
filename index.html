@@ -61,7 +61,9 @@
       "telegram-bot": "http://100.101.148.4:8080",
       games_101: "https://www.playfree.party/",
       personal_tracking: "https://100.101.148.4:3000/",
+      ml_test: "http://100.101.148.4:4040/",
     };
+    const NO_PAGE = new Set(["games_101"]);
 
     function usesIp(url) {
       try {
@@ -107,7 +109,7 @@
     const RANK = { green: 0, yellow: 1, red: 2 };
 
     function setProjects(names) {
-      projects = [...names]
+      projects = [...new Set([...names, ...Object.keys(URLS)])]
         .filter(name => !name.startsWith("."))
         .sort((a, b) => a.localeCompare(b))
         .map(name => ({ name, url: URLS[name] }));
@@ -127,7 +129,7 @@
     function render() {
       rows.innerHTML = projects.map(p => {
         const star = p.url && usesIp(p.url) ? `<span class="ip-mark">*</span>` : "";
-        const link = p.url
+        const link = p.url && !NO_PAGE.has(p.name)
           ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>${star}`
           : "";
         const health = p.url ? healthUrl(p.url) : "";
@@ -221,6 +223,7 @@
       setProjects(names);
     };
 
+    setProjects([]);
     (async () => {
       try {
         const dir = await loadHandle();
