@@ -64,6 +64,21 @@
       ml_test: "http://100.101.148.4:4040/",
     };
     const NO_PAGE = new Set(["games_101"]);
+    const FOLDERS = [
+      "ML_test",
+      "ai-hedge-fund",
+      "fin_portfolio",
+      "fin_script",
+      "games_101",
+      "lotbook",
+      "market-analysis-api",
+      "personal_projects_management",
+      "personal_tracking",
+      "py_scripts",
+      "scripts",
+      "stock-compass",
+      "telegram-bot",
+    ];
 
     function usesIp(url) {
       try {
@@ -108,19 +123,37 @@
 
     const RANK = { green: 0, yellow: 1, red: 2 };
 
+    function urlFor(name) {
+      if (URLS[name]) return URLS[name];
+      const lower = name.toLowerCase();
+      const key = Object.keys(URLS).find(k => k.toLowerCase() === lower);
+      return key ? URLS[key] : undefined;
+    }
+
+    function urlKey(name) {
+      if (URLS[name]) return name;
+      const lower = name.toLowerCase();
+      return Object.keys(URLS).find(k => k.toLowerCase() === lower);
+    }
+
     function setProjects(names) {
-      projects = [...new Set([...names, ...Object.keys(URLS)])]
-        .filter(name => !name.startsWith("."))
+      const folderNames = [...names].filter(name => !name.startsWith("."));
+      const covered = new Set(folderNames.map(urlKey).filter(Boolean));
+      const extras = Object.keys(URLS).filter(key => !covered.has(key));
+      projects = [...folderNames, ...extras]
         .sort((a, b) => a.localeCompare(b))
-        .map(name => ({ name, url: URLS[name] }));
+        .map(name => {
+          const url = urlFor(name);
+          return { name, url, color: url ? undefined : "red" };
+        });
       render();
       refresh();
     }
 
     function sortProjects() {
       projects.sort((a, b) => {
-        const ra = a.color == null ? 3 : RANK[a.color];
-        const rb = b.color == null ? 3 : RANK[b.color];
+        const ra = !a.url ? 3 : a.color == null ? 3 : RANK[a.color];
+        const rb = !b.url ? 3 : b.color == null ? 3 : RANK[b.color];
         if (ra !== rb) return ra - rb;
         return a.name.localeCompare(b.name);
       });
@@ -129,17 +162,20 @@
     function render() {
       rows.innerHTML = projects.map(p => {
         const star = p.url && usesIp(p.url) ? `<span class="ip-mark">*</span>` : "";
-        const link = p.url && !NO_PAGE.has(p.name)
+        const link = p.url && !NO_PAGE.has(p.name) && !NO_PAGE.has(p.name.toLowerCase())
           ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>${star}`
           : "";
         const health = p.url ? healthUrl(p.url) : "";
-        const light = p.color || "yellow";
+        const light = p.url ? (p.color || "yellow") : "red";
         const code = p.code ?? "";
         const tip = p.meta ? Object.entries(p.meta).map(([k, v]) => `${k}: ${v}`).join(" · ") : "";
+        const healthCell = health
+          ? `<span class="light ${light}"></span><a class="code" href="${health}" target="_blank" rel="noopener" title="${tip}">${code}</a>`
+          : `<span class="light red"></span>`;
         return `
           <tr>
             <td>${p.name}</td>
-            <td>${health ? `<span class="light ${light}"></span><a class="code" href="${health}" target="_blank" rel="noopener" title="${tip}">${code}</a>` : ""}</td>
+            <td>${healthCell}</td>
             <td>${link}</td>
           </tr>
         `;
@@ -223,7 +259,7 @@
       setProjects(names);
     };
 
-    setProjects([]);
+    setProjects(FOLDERS);
     (async () => {
       try {
         const dir = await loadHandle();
