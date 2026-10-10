@@ -61,21 +61,8 @@
       "telegram-bot": "https://telegram-bot.playfree.party/",
       games_101: "https://games_101.playfree.party/",
       personal_tracking: "https://personal_tracking.playfree.party/",
-      ml_test: "https://ml-pred.playfree.party/",
+      ml_pred: "https://ml-pred.playfree.party/",
     };
-    const FOLDERS = [
-      "ML_test",
-      "ai-hedge-fund",
-      "games_101",
-      "lotbook",
-      "market-analysis-api",
-      "personal_projects_management",
-      "personal_tracking",
-      "py_scripts",
-      "scripts",
-      "stock-compass",
-      "telegram-bot",
-    ];
 
     function usesIp(url) {
       try {
@@ -106,6 +93,9 @@
         try { body = await res.json(); } catch {}
         const healthy = bodyHealthy(body) ?? res.ok;
         const color = healthy ? "green" : res.status >= 500 ? "red" : "yellow";
+        if (url.includes("ml-pred")) {
+          console.log(url, res.status, body);
+        }
         return { color, code: res.status, body };
       } catch (err) {
         const code = err.name === "AbortError" ? "timeout" : "failed";
@@ -133,11 +123,8 @@
       return Object.keys(URLS).find(k => k.toLowerCase() === lower);
     }
 
-    function setProjects(names) {
-      const folderNames = [...names].filter(name => !name.startsWith("."));
-      const covered = new Set(folderNames.map(urlKey).filter(Boolean));
-      const extras = Object.keys(URLS).filter(key => !covered.has(key));
-      projects = [...folderNames, ...extras]
+    function setProjects(folderNames) {
+      projects = folderNames
         .sort((a, b) => a.localeCompare(b))
         .map(name => {
           const url = urlFor(name);
