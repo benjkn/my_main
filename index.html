@@ -46,9 +46,9 @@
 <body>
   <header>
     <h1>Projects</h1>
-    <button type="button" id="pick">Choose Projects folder</button>
+    <!-- <button type="button" id="pick">Choose Projects folder</button> -->
   </header>
-  <input type="file" id="folder" webkitdirectory hidden>
+  <!-- <input type="file" id="folder" webkitdirectory hidden> -->
   <table>
     <thead>
       <tr><th>Project</th><th>Health</th><th></th></tr>
@@ -57,13 +57,12 @@
   </table>
   <script>
     const URLS = {
-      lotbook: "http://192.168.1.199:8000/",
-      "telegram-bot": "http://192.168.1.199:8080",
-      games_101: "https://www.playfree.party/",
-      personal_tracking: "https://192.168.1.199:3000/",
-      ml_test: "http://192.168.1.199:4040/",
+      lotbook: "https://lotbook.playfree.party/",
+      "telegram-bot": "https://telegram-bot.playfree.party/",
+      games_101: "https://games_101.playfree.party/",
+      personal_tracking: "https://personal_tracking.playfree.party/",
+      ml_test: "https://ml_test.playfree.party/",
     };
-    const NO_PAGE = new Set(["games_101"]);
     const FOLDERS = [
       "ML_test",
       "ai-hedge-fund",
@@ -88,7 +87,7 @@
 
     function healthUrl(url) {
       const u = new URL(url);
-      u.pathname = usesIp(url) ? "/health" : "/api/health";
+      u.pathname = u.hostname === "games_101.playfree.party" ? "/api/health" : "/health";
       u.search = "";
       u.hash = "";
       return u.href;
@@ -160,7 +159,7 @@
     function render() {
       rows.innerHTML = projects.map(p => {
         const star = p.url && usesIp(p.url) ? `<span class="ip-mark">*</span>` : "";
-        const link = p.url && !NO_PAGE.has(p.name) && !NO_PAGE.has(p.name.toLowerCase())
+        const link = p.url
           ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>${star}`
           : "";
         const health = p.url ? healthUrl(p.url) : "";
@@ -238,6 +237,7 @@
       return true;
     }
 
+    /*
     document.getElementById("pick").onclick = async () => {
       if (window.showDirectoryPicker) {
         const dir = await showDirectoryPicker();
@@ -257,13 +257,15 @@
       setProjects(names);
     };
 
-    setProjects(FOLDERS);
     (async () => {
       try {
         const dir = await loadHandle();
         if (dir) await useDir(dir);
       } catch {}
     })();
+    */
+
+    setProjects(FOLDERS);
 
     setInterval(refresh, 15000);
   </script>
