@@ -27,6 +27,8 @@
     }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+    td.open { white-space: nowrap; padding-right: 1.75rem; }
+    td.pages-col { white-space: nowrap; padding-left: 0.75rem; }
     th { font-weight: 500; color: color-mix(in srgb, currentColor 55%, transparent); font-size: 0.8rem; }
     .light {
       display: inline-block;
@@ -41,7 +43,6 @@
     .red { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
     a { color: inherit; }
     .pages {
-      margin-left: 0.65rem;
       display: inline-flex;
       align-items: center;
       gap: 0.28rem;
@@ -64,7 +65,7 @@
   <!-- <input type="file" id="folder" webkitdirectory hidden> -->
   <table>
     <thead>
-      <tr><th>Project</th><th>Health</th><th></th></tr>
+      <tr><th>Project</th><th>Health</th><th></th><th></th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
@@ -193,7 +194,8 @@
           <tr>
             <td>${p.name}</td>
             <td>${healthCell}</td>
-            <td>${link}${pages}</td>
+            <td class="open">${link}</td>
+            <td class="pages-col">${pages}</td>
           </tr>
         `;
       }).join("");
