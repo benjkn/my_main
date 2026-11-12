@@ -23,7 +23,9 @@
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
     td.open { white-space: nowrap; padding-right: 1.75rem; }
+    td.local { white-space: nowrap; padding-left: 0.75rem; padding-right: 1.75rem; }
     td.pages-col { white-space: nowrap; padding-left: 0.75rem; }
+    .ip-mark { color: #ef4444; font-size: 0.75em; }
     th { font-weight: 500; color: color-mix(in srgb, currentColor 55%, transparent); font-size: 0.8rem; }
     .light {
       display: inline-block;
@@ -56,10 +58,10 @@
   </style>
 </head>
 <body>
-  <h1>Projects <a class="gh" id="site-gh" href="https://benjkn.github.io/my_public_website/" target="_blank" rel="noopener" title="GitHub Pages" aria-label="GitHub Pages"></a></h1>
+  <h1>Projects <a class="gh" id="site-gh" href="https://benjkn.github.io/my_main/" target="_blank" rel="noopener" title="GitHub Pages" aria-label="GitHub Pages"></a></h1>
   <table>
     <thead>
-      <tr><th>Project</th><th>Health</th><th></th><th></th></tr>
+      <tr><th>Project</th><th>Health</th><th></th><th></th><th></th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
@@ -73,6 +75,11 @@
       games_101: "https://games-101.playfree.party/",
       personal_tracking: "https://personal-tracking.playfree.party/",
       ml_pred: "https://ml-pred.playfree.party/",
+    };
+    const LOCAL_HOST = "192.168.50.2";
+    const LOCAL = {
+      lotbook: 8000,
+      ml_pred: 4040,
     };
     const PAGES = {
       benjkn: "https://benjkn.github.io/my_public_website/",
@@ -148,6 +155,10 @@
 
     function render() {
       rows.innerHTML = projects.map(p => {
+        const port = LOCAL[p.name];
+        const local = port
+          ? `<a href="http://${LOCAL_HOST}:${port}/" target="_blank" rel="noopener">:${port}</a><span class="ip-mark">*</span>`
+          : "";
         const extra = PAGES[p.name];
         const pages = extra
           ? `<span class="pages"><a href="${extra}" target="_blank" rel="noopener">Pages</a><a class="gh" href="${GITHUB}" target="_blank" rel="noopener" title="GitHub profile" aria-label="GitHub profile">${GH_ICON}</a></span>`
@@ -163,6 +174,7 @@
             <td><span class="name">${p.name}<span class="repos">${repos}</span></span></td>
             <td><span class="light ${light}"></span><a class="code" href="${health}" target="_blank" rel="noopener" title="${tip}">${p.code ?? ""}</a></td>
             <td class="open"><a href="${p.url}" target="_blank" rel="noopener">open</a></td>
+            <td class="local">${local}</td>
             <td class="pages-col">${pages}</td>
           </tr>
         `;
